@@ -7,6 +7,7 @@ build-ui:
 	@cd ui && npm run build && rm -fr ../cmd/dist && mv dist ../cmd/
 
 build-backend:
+	@go fmt ./...
 	@go build -o portfolio cmd/main.go
 
 build:

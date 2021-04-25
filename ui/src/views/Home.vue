@@ -5,13 +5,14 @@
 
     <div class="columns pt-5 pb-5">
       <div class="column">
-        <pie-chart :chart-data="chartData" :options="chartOptions" v-if="chartData"></pie-chart>
+        <pie-chart :chart-data="distribution" :options="chartOptions" v-if="distribution"></pie-chart>
       </div>
       <div class="column">
         <line-chart :chart-data="lineChartData" :options="chartOptions" v-if="lineChartData"></line-chart>
       </div>
 
     </div>
+    <router-link class="button is-info" :to="{name:'PortfolioHistory', params:{id:portfolio.id, portfolio:portfolio}}" v-if="portfolio">View History</router-link>
     <table class="table is-striped  is-hoverable is-fullwidth" v-if="portfolio">
       <tr>
         <th>Asset</th>
@@ -61,6 +62,7 @@ export default {
       portfolio: null,
       chartData: null,
       colors: [],
+      distribution: null,
       lineChartData: null,
       chartOptions: {
         legend: {
@@ -79,8 +81,8 @@ export default {
     formatPercentage,
     generateChartColors: function (dataLength) {
       return interpolateColors(dataLength, interpolateRdYlBu, {
-        colorStart: 0.1,
-        colorEnd: 1,
+        colorStart: 0.75,
+        colorEnd: 2,
         useEndAsStart: false,
       });
     }
@@ -90,6 +92,24 @@ export default {
       this.portfolios = await this.getPortfolios()
       this.portfolio = await this.getPortfolio(this.portfolios[0].id)
       this.colors = this.generateChartColors((this.portfolio.items || []).length)
+
+      let assetDistribution = this.portfolio.items.reduce(function (r, o) {
+        (r[o.asset_type])? r[o.asset_type] += o.total_value : r[o.asset_type] = o.total_value;
+        return r;
+      }, {});
+
+      this.distribution = {
+        labels: Object.keys(assetDistribution),
+        datasets: [
+          {
+            label: this.portfolio.name,
+            backgroundColor: this.colors,
+            hoverBackgroundColor: this.colors,
+            data: Object.values(assetDistribution)
+          }
+        ]
+      }
+
       this.chartData = {
         labels: this.portfolio.items.map(i => i.label || i.symbol),
         datasets: [

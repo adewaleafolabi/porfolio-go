@@ -15,9 +15,9 @@
 
       <div id="navbarBasicExample" class="navbar-menu">
         <div class="navbar-start">
-          <a class="navbar-item">
+          <router-link class="navbar-item" to="/">
             Home
-          </a>
+          </router-link>
 
           <a class="navbar-item">
 

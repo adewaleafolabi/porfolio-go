@@ -1,8 +1,9 @@
 package repo
 
 import (
-	"github.com/segmentio/ksuid"
 	"portfolio/pkg"
+
+	"github.com/segmentio/ksuid"
 )
 
 func CreatePortfolio(p *pkg.Portfolio) (pkg.Portfolio, error) {

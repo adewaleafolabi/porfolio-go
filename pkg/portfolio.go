@@ -2,22 +2,24 @@ package pkg
 
 import (
 	"fmt"
-	"github.com/dustin/go-humanize"
-	"github.com/olekukonko/tablewriter"
-	"github.com/piquette/finance-go/quote"
-	"gorm.io/gorm"
-	"portfolio/providers"
+	"portfolio/pricing"
 	"sort"
 	"strings"
 	"time"
-)
 
-type PriceProvider string
+	"github.com/dustin/go-humanize"
+	"github.com/olekukonko/tablewriter"
+	"gorm.io/gorm"
+)
 
 const (
-	CoinAPI PriceProvider = "CoinAPI"
-	Yahoo   PriceProvider = "Yahoo"
+	Cash   AssetType = "CASH"
+	Stock  AssetType = "STOCK"
+	Crypto AssetType = "CRYPTO"
+	Debt   AssetType = "DEBT"
 )
+
+type AssetType string
 
 type Portfolio struct {
 	gorm.Model
@@ -31,13 +33,14 @@ type Portfolio struct {
 
 type PortfolioItem struct {
 	gorm.Model
-	PortfolioID   string        `json:"portfolio_id"`
-	Symbol        string        `json:"symbol"`
-	Icon          string        `json:"icon"`
-	Quantity      float64       `json:"quantity"`
-	TotalValue    float64       `json:"total_value"`
-	Label         string        `json:"label"`
-	PriceProvider PriceProvider `json:"price_provider"`
+	PortfolioID   string                `json:"portfolio_id"`
+	Symbol        string                `json:"symbol"`
+	AssetType     string                `json:"asset_type"`
+	Icon          string                `json:"icon"`
+	Quantity      float64               `json:"quantity"`
+	TotalValue    float64               `json:"total_value"`
+	Label         string                `json:"label"`
+	PriceProvider pricing.PriceProvider `json:"price_provider"`
 }
 
 func (pi *PortfolioItem) DisplayLabel() string {
@@ -60,44 +63,7 @@ type PortfolioHistory struct {
 	PortfolioID string    `json:"portfolio_id"`
 }
 
-func (p *Portfolio) UpdateTotalValue() error {
-	usdRate, err := p.GetBaseCurrencyUSDRate()
-	if err != nil {
-		return err
-	}
-
-	var symbols []string
-	var symbolsCoinApi []string
-	for _, item := range p.Items {
-		if item.Symbol == p.BaseCurrency {
-			continue
-		}
-		if item.PriceProvider == CoinAPI {
-			symbolsCoinApi = append(symbolsCoinApi, item.Symbol)
-		}
-		symbols = append(symbols, item.Symbol)
-	}
-
-	coinProvider := providers.CoinAPI{}
-	registry := map[string]*float64{}
-	for _, s := range symbolsCoinApi {
-		p, err := coinProvider.GetPrice(s)
-		if err != nil {
-			return err
-		}
-		val := p * usdRate
-		registry[s] = &val
-	}
-	quotes := quote.List(symbols)
-
-	for quotes.Next() {
-		q := quotes.Quote()
-		registry[q.Symbol] = &q.RegularMarketPrice
-		if q.CurrencyID == "USD" {
-			price := q.RegularMarketPrice * usdRate
-			registry[q.Symbol] = &price
-		}
-	}
+func (p *Portfolio) UpdateTotalValue(prices map[string]float64) {
 	p.TotalValue = 0
 	for i := range p.Items {
 		if p.Items[i].Symbol == p.BaseCurrency {
@@ -105,25 +71,33 @@ func (p *Portfolio) UpdateTotalValue() error {
 			p.TotalValue += p.Items[i].TotalValue
 			continue
 		}
-		price := registry[p.Items[i].Symbol]
-		if price != nil {
-			p.Items[i].TotalValue = *price * p.Items[i].Quantity
+		if price, ok := prices[p.Items[i].Symbol]; ok {
+			p.Items[i].TotalValue = price * p.Items[i].Quantity
 			p.TotalValue += p.Items[i].TotalValue
 		}
 	}
+
 	sort.Slice(p.Items, func(i, j int) bool {
 		return p.Items[i].TotalValue > p.Items[j].TotalValue
 	})
-
-	return nil
 }
 
-func (p *Portfolio) GetBaseCurrencyUSDRate() (float64, error) {
-	q, err := quote.Get(fmt.Sprintf("%s=X", p.BaseCurrency))
-	if err != nil {
-		return 0.0, err
+func (p Portfolio) GeneratePricingRequest() pricing.GetPricingRequest {
+	var items []pricing.GetPricingRequestItem
+	for _, item := range p.Items {
+		if item.Symbol == p.BaseCurrency {
+			continue
+		}
+		items = append(items, pricing.GetPricingRequestItem{
+			Symbol:   item.Symbol,
+			Provider: item.PriceProvider,
+		})
 	}
-	return q.RegularMarketPrice, nil
+	return pricing.GetPricingRequest{
+		BaseCurrency: p.BaseCurrency,
+		Items:        items,
+	}
+
 }
 
 func (p *Portfolio) String() string {

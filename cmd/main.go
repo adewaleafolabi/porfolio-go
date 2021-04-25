@@ -3,27 +3,28 @@ package main
 import (
 	"context"
 	"embed"
-	"encoding/json"
 	"flag"
 	"fmt"
+	"io/fs"
+	"net/http"
+	"portfolio/pkg"
+	"portfolio/pricing"
+	"portfolio/server"
+	"strings"
+	"time"
+
 	"github.com/go-co-op/gocron"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cors"
 	"github.com/gofiber/fiber/v2/middleware/filesystem"
+	"github.com/gofiber/fiber/v2/middleware/logger"
 	"github.com/gofiber/fiber/v2/middleware/recover"
+	"github.com/kelseyhightower/envconfig"
 	"github.com/segmentio/ksuid"
+	"go.uber.org/zap"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
-	"io/fs"
-	"log"
-	"net/http"
-	"os"
-	"os/exec"
-	"portfolio/pkg"
-	"portfolio/server"
-	"runtime"
-	"time"
 )
 
 // It will add the specified files.
@@ -33,46 +34,71 @@ import (
 var static embed.FS
 
 func main() {
+	prodLogger, _ := zap.NewProduction()
+	defer func(logger *zap.Logger) {
+		_ = logger.Sync()
+	}(prodLogger)
+
+	sugar := prodLogger.Sugar()
+
 	dbPath := flag.String("db", "portfolio.db", "path to db file")
 	doHistoryNow := flag.Bool("runHistory", false, "run history portfolio cron")
 	doMigration := flag.Bool("runMigration", false, "run db migration")
 
 	flag.Parse()
 
+	conf := server.Config{}
+	if err := envconfig.Process("", &conf); err != nil {
+		sugar.Fatal(err)
+	}
+	conf.CoinAPIBaseURL = strings.TrimRight(conf.CoinAPIBaseURL, "/")
+
+	pm := pricing.NewPriceManager(conf.CoinAPIToken, conf.CoinAPIBaseURL)
+
 	db, err := gorm.Open(sqlite.Open(*dbPath), &gorm.Config{})
 	if err != nil {
-		panic("failed to connect database")
+		sugar.Fatalw("failed to connect database", "db", *dbPath, "err", err)
 	}
 
 	if *doHistoryNow {
-		logValue(db)
+		logValue(db, pm, sugar)
 	}
 
 	if *doMigration {
-		if err:= migrate(db);err!=nil{
-			log.Fatal(err)
+		sugar.Info("Starting DB migration")
+
+		if err := migrate(db); err != nil {
+			sugar.Fatal("DB migration failed", err)
 		}
+		sugar.Info("DB migration successful")
 	}
 
 	s1 := gocron.NewScheduler(time.Local)
-	_, err = s1.Every(1).Day().At("17:00").Do(logValue, db)
+	_, err = s1.Every(1).Day().At(conf.DailyCronTime).Do(logValue, db, pm, sugar)
 	if err != nil {
-		log.Fatal(err)
+		sugar.Fatal(err)
 	}
 	s1.StartAsync()
-	s := server.Server{DB: db}
+
+	app := setupWebServerApp(db, pm, sugar)
+
+	sugar.Fatal(app.Listen(conf.ADDR))
+}
+
+func setupWebServerApp(db *gorm.DB, pm *pricing.PriceManager, sugar *zap.SugaredLogger) *fiber.App {
+	s := server.Server{DB: db, Logger: sugar, PricingManager: pm}
 
 	app := fiber.New()
 	app.Use(recover.New())
+	app.Use(logger.New())
 
 	app.Use(cors.New(cors.Config{
-		AllowOrigins: "http://localhost:8080, http://localhost:5000",
-		AllowHeaders:  "Origin, Content-Type, Accept, Authorization, X-CSRF-Token, X-Requested-With, Accept-Language, Cache-Control, User-Agent",
-		AllowMethods: "GET, POST, OPTIONS , PUT, DELETE",
-		ExposeHeaders: "Link",
+		AllowOrigins:     "http://localhost:8080, http://localhost:5000",
+		AllowHeaders:     "Origin, Content-Type, Accept, Authorization, X-CSRF-Token, X-Requested-With, Accept-Language, Cache-Control, User-Agent",
+		AllowMethods:     "GET, POST, OPTIONS , PUT, DELETE",
+		ExposeHeaders:    "Link",
 		AllowCredentials: true,
 	}))
-
 
 	subFS, _ := fs.Sub(static, "dist")
 	app.Use("/", filesystem.New(filesystem.Config{
@@ -84,48 +110,54 @@ func main() {
 	v1.Get("/portfolios/", s.GetPortfolios)
 	v1.Get("/portfolios/:portfolio_id", s.GetPortfolio)
 
-	log.Fatal(app.Listen(":5000"))
+	return app
 }
 
+func logValue(db *gorm.DB, pm *pricing.PriceManager, logger *zap.SugaredLogger) {
+	var portfolios []pkg.Portfolio
 
-
-func logValue(db *gorm.DB) {
-	p := pkg.Portfolio{}
-	if err := db.Preload(clause.Associations).First(&p).Error; err != nil {
-		log.Println("error fetching portfolio from DB")
+	if err := db.Preload(clause.Associations).Find(&portfolios).Error; err != nil {
+		logger.Error("error fetching portfolios from DB", err)
 		return
 	}
-	if err := p.UpdateTotalValue(); err != nil {
-		PriceRecovery(context.Background(), &p)
+	for i := 0; i < len(portfolios); i++ {
+		req := portfolios[i].GeneratePricingRequest()
+		prices, err := pm.GetPricing(req)
+		if err != nil {
+			logger.Error(err)
+			PriceRecovery(context.Background(), pm, &portfolios[i], logger)
+		}
+		portfolios[i].UpdateTotalValue(prices)
+
+		hist := pkg.PortfolioHistory{
+			ID:          ksuid.New().String(),
+			Date:        time.Now(),
+			Value:       portfolios[i].TotalValue,
+			SnapShot:    portfolios[i].String(),
+			PortfolioID: portfolios[i].ID,
+		}
+
+		if err := db.Create(&hist).Error; err != nil {
+			logger.Errorw("error storing portfolio history", "err", err)
+		}
+
+		fmt.Println(portfolios[i].String())
 	}
-	response, err := json.Marshal(p)
-	if err != nil {
-		log.Printf("error saving portfolio %s value. %.2f\n", p.ID, p.TotalValue)
-	}
-	hist := pkg.PortfolioHistory{
-		ID:          ksuid.New().String(),
-		Date:        time.Now(),
-		Value:       p.TotalValue,
-		SnapShot:    string(response),
-		PortfolioID: p.ID,
-	}
-	db.Create(&hist)
-	log.Println(p.String())
 }
 
-
-
-func PriceRecovery(ctx context.Context, p *pkg.Portfolio) {
+func PriceRecovery(ctx context.Context, pm *pricing.PriceManager, p *pkg.Portfolio, logger *zap.SugaredLogger) {
 	for {
 		select {
 		case <-time.After(5 * time.Minute):
-			fmt.Printf("calling price recovery %s \n", time.Now().Format(time.Kitchen))
-			if err := p.UpdateTotalValue(); err == nil {
-				fmt.Println("price recovery complete")
+			logger.Infow("running price recovery", "time", time.Now().Format(time.Kitchen))
+			prices, err := pm.GetPricing(p.GeneratePricingRequest())
+			if err == nil {
+				p.UpdateTotalValue(prices)
+				logger.Info("price recovery complete")
 				break
 			}
 		case <-ctx.Done():
-			fmt.Println("ctx halted")
+			logger.Info("ctx halted")
 		}
 	}
 }
@@ -139,37 +171,10 @@ func migrate(db *gorm.DB) error {
 		Items:        nil,
 		History:      nil,
 	}
-	//Add portfolio items
-	//p.Items = append(p.Items, pkg.PortfolioItem{
-	//	PortfolioID: p.ID,
-	//	Symbol:      "ETH-CAD",
-	//	Quantity:    0,
-	//})
-
 
 	if err := db.AutoMigrate(&pkg.Portfolio{}, &pkg.PortfolioItem{}, &pkg.PortfolioHistory{}); err != nil {
 		return err
 	}
-	db.Create(&p)
-	os.Exit(1)
-	return nil
-}
 
-
-func openBrowser(url string) {
-	var err error
-
-	switch runtime.GOOS {
-	case "linux":
-		err = exec.Command("xdg-open", url).Start()
-	case "windows":
-		err = exec.Command("rundll32", "url.dll,FileProtocolHandler", url).Start()
-	case "darwin":
-		err = exec.Command("open", url).Start()
-	default:
-		err = fmt.Errorf("unsupported platform")
-	}
-	if err != nil {
-		log.Fatal(err)
-	}
+	return db.Create(&p).Error
 }
