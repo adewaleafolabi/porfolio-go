@@ -54,6 +54,7 @@ func (p *PriceManager) GetPricing(request GetPricingRequest) (map[string]float64
 	if err != nil {
 		return output, err
 	}
+	output[fmt.Sprintf("%s=X", request.BaseCurrency)] = usdBaseCurrencyRate
 
 	symbols := make(map[PriceProvider][]string)
 

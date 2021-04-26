@@ -23,12 +23,13 @@ type AssetType string
 
 type Portfolio struct {
 	gorm.Model
-	ID           string             `json:"id"`
-	Name         string             `json:"name"`
-	BaseCurrency string             `json:"base_currency"`
-	TotalValue   float64            `json:"total_value"`
-	Items        []PortfolioItem    `json:"items"`
-	History      []PortfolioHistory `json:"history"`
+	ID            string             `json:"id"`
+	Name          string             `json:"name"`
+	BaseCurrency  string             `json:"base_currency"`
+	TotalValue    float64            `json:"total_value"`
+	TotalValueUSD float64            `json:"total_value_usd" gorm:"-"`
+	Items         []PortfolioItem    `json:"items"`
+	History       []PortfolioHistory `json:"history"`
 }
 
 type PortfolioItem struct {
@@ -76,6 +77,8 @@ func (p *Portfolio) UpdateTotalValue(prices map[string]float64) {
 			p.TotalValue += p.Items[i].TotalValue
 		}
 	}
+
+	p.TotalValueUSD = p.TotalValue / prices[fmt.Sprintf("%s=X",p.BaseCurrency)]
 
 	sort.Slice(p.Items, func(i, j int) bool {
 		return p.Items[i].TotalValue > p.Items[j].TotalValue
