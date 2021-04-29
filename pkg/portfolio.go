@@ -78,7 +78,7 @@ func (p *Portfolio) UpdateTotalValue(prices map[string]float64) {
 		}
 	}
 
-	p.TotalValueUSD = p.TotalValue / prices[fmt.Sprintf("%s=X",p.BaseCurrency)]
+	p.TotalValueUSD = p.TotalValue / prices[fmt.Sprintf("%s=X", p.BaseCurrency)]
 
 	sort.Slice(p.Items, func(i, j int) bool {
 		return p.Items[i].TotalValue > p.Items[j].TotalValue

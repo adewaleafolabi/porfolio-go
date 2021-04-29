@@ -1,8 +1,7 @@
 <template>
   <div class="home">
-    <h2 class="title has-text-centered" v-if="portfolio">{{ portfolio ? portfolio.name : '' }} Portfolio
-      {{ formatCurrency(portfolio.total_value) }} <h5>{{ formatCurrency(portfolio.total_value_usd, 'USD') }}</h5></h2>
 
+    <portfolio-header :portfolio="portfolio"></portfolio-header>
 
     <div class="columns pt-5 pb-5">
       <div class="column">
@@ -49,11 +48,13 @@ import PieChart from "../components/PieChart";
 import {interpolateRdYlBu} from "d3-scale-chromatic";
 import {interpolateColors} from "../utils/colors";
 import LineChart from "../components/LineChart";
+import PortfolioHeader from "../components/PortfolioHeader";
 
 export default {
 
   name: 'Home',
   components: {
+    PortfolioHeader,
     LineChart,
     PieChart
   },

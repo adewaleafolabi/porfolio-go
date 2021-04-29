@@ -1,7 +1,8 @@
 <template>
   <div class="portfolio-history">
     <div class="columns">
-      <div class="column " >
+      <div class="column">
+        <portfolio-header :portfolio="portfolio"></portfolio-header>
         <line-chart v-if="portfolioData" :chart-data="chartData" :key="dateGrouping"  :styles="lineChartStyle"></line-chart>
       </div>
       <div class="column" ></div>
@@ -50,11 +51,13 @@ import LineChart from "../components/LineChart";
 import {getPortfolio} from "../service/portfolio_service";
 import {formatCurrency, formatDate, formatDecimal} from "../utils/utils";
 import {DateTime} from "luxon";
+import PortfolioHeader from "../components/PortfolioHeader";
 
 export default {
 
   name: 'PortfolioHistory',
   components: {
+    PortfolioHeader,
     LineChart
   },
   props: {
