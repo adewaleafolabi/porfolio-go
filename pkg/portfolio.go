@@ -27,6 +27,7 @@ type Portfolio struct {
 	Name          string             `json:"name"`
 	BaseCurrency  string             `json:"base_currency"`
 	TotalValue    float64            `json:"total_value"`
+	Goal          float64            `json:"goal"`
 	TotalValueUSD float64            `json:"total_value_usd" gorm:"-"`
 	Items         []PortfolioItem    `json:"items"`
 	History       []PortfolioHistory `json:"history"`

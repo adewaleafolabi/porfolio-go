@@ -7,6 +7,10 @@ import {formatCurrency} from "../utils/utils";
 export default {
   extends: Doughnut,
   props: {
+    privacyMode:{
+      type: Boolean,
+      default: ()=>false
+    },
     chartData: {
       type: Object,
       default: null
@@ -17,6 +21,7 @@ export default {
     }
   },
   mounted() {
+    let privacy = this.privacyMode
     let tooltips = {
       tooltips: {
         callbacks: {
@@ -32,8 +37,7 @@ export default {
             const currentValue = dataset.data[tooltipItem.index];
             //calculate the percentage based on the total and current item, also this does a rough rounding to give a whole number
             const percentage = Math.floor(((currentValue / total) * 100) + 0.5);
-
-            return `${data.labels[tooltipItem.index]} ${formatCurrency(currentValue)} (${percentage}%)`;
+            return `${data.labels[tooltipItem.index]} ${privacy? '':formatCurrency(currentValue)} (${percentage}%)`;
           }
         }
       },

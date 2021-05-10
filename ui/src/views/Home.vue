@@ -1,43 +1,123 @@
 <template>
-  <div class="home">
-
-    <portfolio-header :portfolio="portfolio"></portfolio-header>
-
-    <div class="columns pt-5 pb-5">
-      <div class="column">
-        <pie-chart :chart-data="distribution" :options="chartOptions" v-if="distribution"></pie-chart>
-      </div>
-      <div class="column">
-        <line-chart :chart-data="lineChartData" :options="chartOptions" v-if="lineChartData"></line-chart>
-      </div>
-
+  <div class="d-flex justify-content-center" v-if="loading">
+    <div class="spinner-grow text-primary" role="status">
+      <span class="visually-hidden">Loading...</span>
     </div>
-    <router-link class="button is-info" :to="{name:'PortfolioHistory', params:{id:portfolio.id, portfolio:portfolio}}" v-if="portfolio">View History</router-link>
-    <table class="table is-striped  is-hoverable is-fullwidth" v-if="portfolio">
-      <tr>
-        <th>Asset</th>
-        <th>Allocation</th>
-        <th>Amount</th>
-        <th>Total</th>
-      </tr>
-      <tr v-for="(item,index) in portfolio.items" :key="index">
-        <td>{{ item.label || item.symbol }}</td>
-        <td>
-          <div class="progress-wrapper">
-            <progress class="progress is-info " :value="(Math.abs(item.total_value) / portfolio.total_value)*100"
-                      max="100">{{ formatPercentage(item.total_value / portfolio.total_value) }}
-            </progress>
-            <p class="progress-value ">{{ formatPercentage(item.total_value / portfolio.total_value) }}</p>
+    <div class="spinner-grow text-secondary" role="status">
+      <span class="visually-hidden">Loading...</span>
+    </div>
+    <div class="spinner-grow text-success" role="status">
+      <span class="visually-hidden">Loading...</span>
+    </div>
+    <div class="spinner-grow text-danger" role="status">
+      <span class="visually-hidden">Loading...</span>
+    </div>
+    <div class="spinner-grow text-warning" role="status">
+      <span class="visually-hidden">Loading...</span>
+    </div>
+    <div class="spinner-grow text-info" role="status">
+      <span class="visually-hidden">Loading...</span>
+    </div>
+    <div class="spinner-grow text-light" role="status">
+      <span class="visually-hidden">Loading...</span>
+    </div>
+    <div class="spinner-grow text-dark" role="status">
+      <span class="visually-hidden">Loading...</span>
+    </div>
+  </div>
+  <div class="container" v-else>
+
+    <div class="row">
+      <div class="col-12">
+        <portfolio-header :portfolio="portfolio" @privateMode="handlePrivateMode"></portfolio-header>
+      </div>
+    </div>
+    <div class="row row-cols-1 row-cols-md-3 g-4 mt-2">
+      <div class="col">
+        <div class="card tile">
+          <div class="card-header" v-if="portfolio">
+            Road to <span :class="{'blur':privacy}">{{ formatCurrency(this.portfolio.goal, this.portfolio.base_currency, true) }}</span>
           </div>
-        </td>
-        <td>{{ formatDecimal(item.quantity,3) }}</td>
-        <td :class="{ negative: item.total_value < 0 }">{{ formatCurrency(item.total_value) }}</td>
-      </tr>
-      <tr>
-        <td colspan="3">Total</td>
-        <td class="has-text-weight-bold"><em>{{ formatCurrency(portfolio.total_value) }}</em></td>
-      </tr>
-    </table>
+          <div class="card-body">
+            <pie-chart :chart-data="roadToTarget" :options="chartOptions" :privacy-mode="privacy" v-if="roadToTarget"
+                       :key="privacy"></pie-chart>
+          </div>
+        </div>
+      </div>
+      <div class="col">
+        <div class="card tile">
+          <div class="card-header">
+            Asset Distribution
+          </div>
+          <div class="card-body">
+            <pie-chart :chart-data="distribution" :options="chartOptions" :privacy-mode="privacy" v-if="distribution"
+                       :key="privacy"></pie-chart>
+          </div>
+        </div>
+      </div>
+      <div class="col">
+        <div class="card tile">
+          <div class="card-header">
+            Portfolio Growth
+            <router-link class="btn btn-primary btn-sm float-end"
+                         :to="{name:'PortfolioHistory', params:{id:portfolio.id, portfolio:portfolio}}">View History
+            </router-link>
+          </div>
+          <div class="card-body">
+            <portfolio-growth :history="portfolio.history" :privacy-mode="privacy"
+                              :key="growthComponentKey"></portfolio-growth>
+            <portfolio-history-grouping :history="portfolio.history" v-if="portfolio"
+                                        @historyGrouped="handleGrouping"></portfolio-history-grouping>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="row mt-4">
+      <div class="col rounded">
+        <div class="card shadow-sm rounded">
+          <div class="table-responsive rounded">
+            <table class="table table-striped table-hover table-bordered rounded" v-if="portfolio">
+              <thead class="table-dark">
+              <tr>
+                <th>Asset</th>
+                <th>Allocation</th>
+                <th  class="text-end">Amount</th>
+                <th  class="text-end">Total</th>
+              </tr>
+              </thead>
+              <tbody>
+              <tr v-for="(item,index) in portfolio.items" :key="index">
+                <td>{{ item.label || item.symbol }}</td>
+                <td>
+                  <div class="progress position-relative">
+                    <div class="progress-bar progress-bar-striped" role="progressbar"
+                         :style="`width: ${formatPercentage(item.total_value / portfolio.total_value)}`"
+                         aria-valuenow="(Math.abs(item.total_value) / portfolio.total_value)*100"
+                         aria-valuemin="0" aria-valuemax="100"></div>
+                    <small class="justify-content-center d-flex position-absolute w-100">
+                      {{ formatPercentage(item.total_value / portfolio.total_value) }}
+                    </small>
+                  </div>
+                </td>
+                <td :class="{'blur':privacy,}" class="text-end">{{ formatDecimal(item.quantity, 3) }}</td>
+                <td :class="{ 'blur':privacy, negative: item.total_value < 0 }"  class="text-end">{{
+                    formatCurrency(item.total_value)
+                  }}
+                </td>
+              </tr>
+              <tr>
+                <td colspan="3">Total</td>
+                <td class="has-text-weight-bold text-end" :class="{'blur':privacy}"><em>{{
+                    formatCurrency(portfolio.total_value)
+                  }}</em></td>
+              </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -47,24 +127,29 @@ import {formatCurrency, formatDate, formatDecimal, formatPercentage} from "../ut
 import PieChart from "../components/PieChart";
 import {interpolateRdYlBu} from "d3-scale-chromatic";
 import {interpolateColors} from "../utils/colors";
-import LineChart from "../components/LineChart";
 import PortfolioHeader from "../components/PortfolioHeader";
+import PortfolioGrowth from "../components/PortfolioGrowth";
+import PortfolioHistoryGrouping from "../components/PortfolioHistoryGrouping";
 
 export default {
 
   name: 'Home',
   components: {
+    PortfolioHistoryGrouping,
+    PortfolioGrowth,
     PortfolioHeader,
-    LineChart,
     PieChart
   },
   data() {
     return {
+      privacy: false,
       portfolios: [],
       portfolio: null,
       chartData: null,
+      growthComponentKey: 0,
       colors: [],
       distribution: null,
+      roadToTarget: null,
       lineChartData: null,
       chartOptions: {
         legend: {
@@ -81,6 +166,15 @@ export default {
     formatCurrency,
     formatDecimal,
     formatPercentage,
+    handleGrouping(data) {
+      this.portfolio.history = data
+      this.growthComponentKey++
+    },
+    handlePrivateMode(visible) {
+      console.log(visible)
+      this.privacy = visible
+      this.growthComponentKey++
+    },
     generateChartColors: function (dataLength) {
       return interpolateColors(dataLength, interpolateRdYlBu, {
         colorStart: 0.75,
@@ -89,14 +183,20 @@ export default {
       });
     }
   },
+  computed: {
+    loading: function () {
+      return this.portfolio === null
+    }
+  },
   mounted: async function () {
     try {
       this.portfolios = await this.getPortfolios()
       this.portfolio = await this.getPortfolio(this.portfolios[0].id)
       this.colors = this.generateChartColors((this.portfolio.items || []).length)
+      this.privacy = localStorage.getItem("privateMode") === 'true'
 
       let assetDistribution = this.portfolio.items.reduce(function (r, o) {
-        (r[o.asset_type])? r[o.asset_type] += o.total_value : r[o.asset_type] = o.total_value;
+        (r[o.asset_type]) ? r[o.asset_type] += o.total_value : r[o.asset_type] = o.total_value;
         return r;
       }, {});
 
@@ -111,7 +211,14 @@ export default {
           }
         ]
       }
-
+      this.roadToTarget = {
+        labels: ["Complete", "Remaining"],
+        datasets: [{
+          backgroundColor: this.colors,
+          hoverBackgroundColor: this.colors,
+          data: [this.portfolio.total_value, this.portfolio.goal - this.portfolio.total_value]
+        }]
+      }
       this.chartData = {
         labels: this.portfolio.items.map(i => i.label || i.symbol),
         datasets: [
@@ -142,37 +249,20 @@ export default {
 </script>
 
 <style>
-
 .negative {
   color: red
 }
 
-.progress-wrapper {
-  position: relative;
+.tile {
+  min-height: 525px;
+  max-height: 525px;
 }
 
-.progress-value {
-  position: absolute;
-  top: 0;
-  left: 50%;
-  transform: translateX(-50%);
-  font-size: calc(1rem / 1.5);
-  line-height: 1rem;
-  font-weight: bold;
+.rounded {
+  border-radius: 0.5rem !important;
 }
 
-.progress.is-small + .progress-value {
-  font-size: calc(0.75rem / 1.5);
-  line-height: 0.75rem;
-}
-
-.progress.is-medium + .progress-value {
-  font-size: calc(1.25rem / 1.5);
-  line-height: 1.25rem;
-}
-
-.progress.is-large + .progress-value {
-  font-size: calc(1.5rem / 1.5);
-  line-height: 1.5rem;
+.blur {
+  filter: blur(0.5rem)
 }
 </style>

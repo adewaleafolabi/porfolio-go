@@ -19,6 +19,10 @@ export const getPortfolio = async (id)=>{
     return getList(`/portfolios/${id}`)
 }
 
+export const createPortfoliosDailyValue = async ()=>{
+    return await API_SERVICE.post(`/portfolios:logValue`)
+}
+
 const getList = async (url, params) => {
     return await API_SERVICE.get(url, {
         params: params,

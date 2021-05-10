@@ -1,6 +1,8 @@
 package server
 
 import (
+	"net/http"
+	"portfolio/cron"
 	"portfolio/pkg"
 	"portfolio/pricing"
 
@@ -61,4 +63,11 @@ func (h *Server) GetPortfolios(c *fiber.Ctx) error {
 	}
 
 	return c.Status(200).JSON(portfolios)
+}
+
+func (h *Server) LogPortfoliosValue(c *fiber.Ctx) error {
+	go func() {
+		cron.LogValue(h.DB, h.PricingManager, h.Logger)
+	}()
+	return c.SendStatus(http.StatusOK)
 }

@@ -1,14 +1,19 @@
 import {DateTime} from "luxon";
 
-export const formatCurrency =(amount, currency='CAD') =>{
+export const formatCurrency =(amount, currency='CAD', compact=false) =>{
     if (!amount) {
         return "--";
     }
 
-    const formatter = new Intl.NumberFormat("en-CA", {
+    const option = {
         style: "currency",
         currency: currency
-    });
+    }
+    if (compact){
+        option.notation = 'compact'
+    }
+    const formatter = new Intl.NumberFormat("en-CA", option);
+
     return formatter.format(amount );
 }
 

@@ -1,12 +1,11 @@
 package main
 
 import (
-	"context"
 	"embed"
 	"flag"
-	"fmt"
 	"io/fs"
 	"net/http"
+	"portfolio/cron"
 	"portfolio/pkg"
 	"portfolio/pricing"
 	"portfolio/server"
@@ -24,7 +23,6 @@ import (
 	"go.uber.org/zap"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
-	"gorm.io/gorm/clause"
 )
 
 // It will add the specified files.
@@ -61,7 +59,7 @@ func main() {
 	}
 
 	if *doHistoryNow {
-		logValue(db, pm, sugar)
+		cron.LogValue(db, pm, sugar)
 	}
 
 	if *doMigration {
@@ -74,7 +72,7 @@ func main() {
 	}
 
 	s1 := gocron.NewScheduler(time.Local)
-	_, err = s1.Every(1).Day().At(conf.DailyCronTime).Do(logValue, db, pm, sugar)
+	_, err = s1.Every(1).Day().At(conf.DailyCronTime).Do(cron.LogValue, db, pm, sugar)
 	if err != nil {
 		sugar.Fatal(err)
 	}
@@ -92,6 +90,14 @@ func setupWebServerApp(db *gorm.DB, pm *pricing.PriceManager, sugar *zap.Sugared
 	app.Use(recover.New())
 	app.Use(logger.New())
 
+	//app.Use(cache.New(cache.Config{
+	//	Next: func(c *fiber.Ctx) bool {
+	//		return c.Query("refresh") == "true"
+	//	},
+	//	Expiration:   5 * time.Minute,
+	//	CacheControl: true,
+	//}))
+
 	app.Use(cors.New(cors.Config{
 		AllowOrigins:     "http://localhost:8080, http://localhost:5000",
 		AllowHeaders:     "Origin, Content-Type, Accept, Authorization, X-CSRF-Token, X-Requested-With, Accept-Language, Cache-Control, User-Agent",
@@ -108,58 +114,10 @@ func setupWebServerApp(db *gorm.DB, pm *pricing.PriceManager, sugar *zap.Sugared
 
 	v1 := app.Group("/api").Group("/v1")
 	v1.Get("/portfolios/", s.GetPortfolios)
+	v1.Post("/portfolios::logValue", s.LogPortfoliosValue)
 	v1.Get("/portfolios/:portfolio_id", s.GetPortfolio)
 
 	return app
-}
-
-func logValue(db *gorm.DB, pm *pricing.PriceManager, logger *zap.SugaredLogger) {
-	var portfolios []pkg.Portfolio
-
-	if err := db.Preload(clause.Associations).Find(&portfolios).Error; err != nil {
-		logger.Error("error fetching portfolios from DB", err)
-		return
-	}
-	for i := 0; i < len(portfolios); i++ {
-		req := portfolios[i].GeneratePricingRequest()
-		prices, err := pm.GetPricing(req)
-		if err != nil {
-			logger.Error(err)
-			PriceRecovery(context.Background(), pm, &portfolios[i], logger)
-		}
-		portfolios[i].UpdateTotalValue(prices)
-
-		hist := pkg.PortfolioHistory{
-			ID:          ksuid.New().String(),
-			Date:        time.Now(),
-			Value:       portfolios[i].TotalValue,
-			SnapShot:    portfolios[i].String(),
-			PortfolioID: portfolios[i].ID,
-		}
-
-		if err := db.Create(&hist).Error; err != nil {
-			logger.Errorw("error storing portfolio history", "err", err)
-		}
-
-		fmt.Println(portfolios[i].String())
-	}
-}
-
-func PriceRecovery(ctx context.Context, pm *pricing.PriceManager, p *pkg.Portfolio, logger *zap.SugaredLogger) {
-	for {
-		select {
-		case <-time.After(5 * time.Minute):
-			logger.Infow("running price recovery", "time", time.Now().Format(time.Kitchen))
-			prices, err := pm.GetPricing(p.GeneratePricingRequest())
-			if err == nil {
-				p.UpdateTotalValue(prices)
-				logger.Info("price recovery complete")
-				break
-			}
-		case <-ctx.Done():
-			logger.Info("ctx halted")
-		}
-	}
 }
 
 func migrate(db *gorm.DB) error {
