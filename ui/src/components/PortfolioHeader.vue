@@ -2,7 +2,7 @@
   <div class="d-flex justify-content-between">
   <h2 class="title has-text-centered" v-if="portfolio">{{ portfolio ? portfolio.name : '' }} Portfolio
     <span :class="{'blur':privateMode}">{{ formatCurrency(portfolio.total_value) }} <h5>{{ formatCurrency(portfolio.total_value_usd, 'USD') }}</h5></span></h2>
-  <button class="btn btn-sm" @click="handleVisibility">{{privateMode?'🐵':'🙈'}}</button>
+  <button class="btn btn-sm fs-3" @click="handleVisibility">{{privateMode?'🐵':'🙈'}}</button>
   </div>
 </template>
 

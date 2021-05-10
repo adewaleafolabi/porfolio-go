@@ -18,9 +18,6 @@
     <div class="spinner-grow text-info" role="status">
       <span class="visually-hidden">Loading...</span>
     </div>
-    <div class="spinner-grow text-light" role="status">
-      <span class="visually-hidden">Loading...</span>
-    </div>
     <div class="spinner-grow text-dark" role="status">
       <span class="visually-hidden">Loading...</span>
     </div>
@@ -102,14 +99,14 @@
                 </td>
                 <td :class="{'blur':privacy,}" class="text-end">{{ formatDecimal(item.quantity, 3) }}</td>
                 <td :class="{ 'blur':privacy, negative: item.total_value < 0 }"  class="text-end">{{
-                    formatCurrency(item.total_value)
+                    formatCurrency(item.total_value,portfolio.base_currency, true)
                   }}
                 </td>
               </tr>
               <tr>
                 <td colspan="3">Total</td>
                 <td class="has-text-weight-bold text-end" :class="{'blur':privacy}"><em>{{
-                    formatCurrency(portfolio.total_value)
+                    formatCurrency(portfolio.total_value, portfolio.base_currency, true)
                   }}</em></td>
               </tr>
               </tbody>
@@ -171,7 +168,6 @@ export default {
       this.growthComponentKey++
     },
     handlePrivateMode(visible) {
-      console.log(visible)
       this.privacy = visible
       this.growthComponentKey++
     },
@@ -264,5 +260,9 @@ export default {
 
 .blur {
   filter: blur(0.5rem)
+}
+
+em{
+  font-weight: 700;
 }
 </style>

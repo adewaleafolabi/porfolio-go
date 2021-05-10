@@ -42,14 +42,14 @@
               <thead class="table-dark">
               <tr>
                 <th>Date</th>
-                <th>Value</th>
+                <th class="text-end">Value</th>
                 <th class="text-end">% Change</th>
               </tr>
               </thead>
               <tbody>
               <tr v-for="(item,index) in portfolioData.history" :key="index">
                 <td>{{ (item.date) }}</td>
-                <td :class="{'blur':privacy}">{{ formatCurrency(item.value) }}</td>
+                <td :class="{'blur':privacy}" class="text-end">{{ formatCurrency(item.value, portfolio.base_currency, true) }}</td>
                 <td v-if="index ===0" class="text-end">--</td>
                 <td v-else :class="{'negative':item.value < portfolioData.history[index-1].value}" class="text-end">
                   {{ formatPercentage((item.value - portfolioData.history[index - 1].value) / portfolioData.history[index - 1].value) }}
