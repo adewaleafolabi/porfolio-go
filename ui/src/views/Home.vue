@@ -97,7 +97,7 @@
                     </small>
                   </div>
                 </td>
-                <td :class="{'blur':privacy,}" class="text-end">{{ formatDecimal(item.quantity, 3) }}</td>
+                <td :class="{'blur':privacy,}" class="text-end">{{ formatNumber(item.quantity, 3) }}</td>
                 <td :class="{ 'blur':privacy, negative: item.total_value < 0 }"  class="text-end">{{
                     formatCurrency(item.total_value,portfolio.base_currency, true)
                   }}
@@ -120,7 +120,7 @@
 
 <script>
 import {getPortfolio, getPortfolios} from "../service/portfolio_service";
-import {formatCurrency, formatDate, formatDecimal, formatPercentage} from "../utils/utils";
+import {formatCurrency, formatDate, formatDecimal, formatNumber, formatPercentage} from "../utils/utils";
 import PieChart from "../components/PieChart";
 import {interpolateRdYlBu} from "d3-scale-chromatic";
 import {interpolateColors} from "../utils/colors";
@@ -161,6 +161,7 @@ export default {
     getPortfolio,
     getPortfolios,
     formatCurrency,
+    formatNumber,
     formatDecimal,
     formatPercentage,
     handleGrouping(data) {

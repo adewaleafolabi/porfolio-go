@@ -16,6 +16,20 @@ export const formatCurrency =(amount, currency='CAD', compact=false) =>{
 
     return formatter.format(amount );
 }
+export const formatNumber =(amount) =>{
+    if (!amount) {
+        return "--";
+    }
+
+    const option = {
+        maximumFractionDigits: 2,
+        notation: 'compact'
+    }
+
+    const formatter = new Intl.NumberFormat("en-CA", option);
+
+    return formatter.format(amount );
+}
 
 export const formatDecimal = (amount, dp=2) => {
     if (!amount) {
