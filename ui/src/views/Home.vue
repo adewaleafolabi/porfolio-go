@@ -85,7 +85,7 @@
               </thead>
               <tbody>
               <tr v-for="(item,index) in portfolio.items" :key="index">
-                <td>{{ item.label || item.symbol }}</td>
+                <td>{{ item.label || item.symbol }} <span class="text-sm fw-bold" v-if="item.unit_price">({{formatCurrency(item.unit_price)}})</span> </td>
                 <td>
                   <div class="progress position-relative">
                     <div class="progress-bar progress-bar-striped" role="progressbar"
@@ -265,5 +265,8 @@ export default {
 
 em{
   font-weight: 700;
+}
+.text-sm{
+  font-size: x-small;
 }
 </style>

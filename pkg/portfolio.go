@@ -41,6 +41,7 @@ type PortfolioItem struct {
 	Icon          string                `json:"icon"`
 	Quantity      float64               `json:"quantity"`
 	TotalValue    float64               `json:"total_value"`
+	UnitPrice    float64               `json:"unit_price" gorm:"-"`
 	Label         string                `json:"label"`
 	PriceProvider pricing.PriceProvider `json:"price_provider"`
 }
@@ -75,6 +76,7 @@ func (p *Portfolio) UpdateTotalValue(prices map[string]float64) {
 		}
 		if price, ok := prices[p.Items[i].Symbol]; ok {
 			p.Items[i].TotalValue = price * p.Items[i].Quantity
+			p.Items[i].UnitPrice = price
 			p.TotalValue += p.Items[i].TotalValue
 		}
 	}
