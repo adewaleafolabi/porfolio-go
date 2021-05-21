@@ -1,15 +1,16 @@
 <template>
-  <div class="container">
+  <loading-indicator v-if="!portfolioData"></loading-indicator>
+  <div class="container" v-else>
     <div class="row">
       <div class="col-12">
-        <portfolio-header :portfolio="portfolio" @privateMode="handlePrivacy"></portfolio-header>
+        <portfolio-header :portfolio="portfolioData" @privateMode="handlePrivacy" ></portfolio-header>
       </div>
     </div>
 
     <div class="row mt-2">
       <div class="col-12">
         <div class="card tile">
-          <div class="card-header" v-if="portfolio">
+          <div class="card-header">
             Portfolio Growth
           </div>
           <div class="card-body">
@@ -25,7 +26,7 @@
     <div class="row">
 
       <div class="d-flex justify-content-between">
-        <portfolio-history-grouping :history="portfolioData.history" v-if="portfolioData"
+        <portfolio-history-grouping :history="portfolioData.history"
                                     @historyGrouped="handleGrouping"></portfolio-history-grouping>
 
         <button :class="{'is-loading':loading}" class="btn btn-sm btn-outline-warning" @click="logPortfolioValue">Update
@@ -38,7 +39,7 @@
       <div class="col rounded">
         <div class="card shadow-sm rounded">
           <div class="table-responsive rounded">
-            <table class="table table-striped table-hover table-bordered rounded" v-if="portfolioData">
+            <table class="table table-striped table-hover table-bordered rounded" >
               <thead class="table-dark">
               <tr>
                 <th>Date</th>
@@ -49,7 +50,7 @@
               <tbody>
               <tr v-for="(item,index) in portfolioData.history" :key="index">
                 <td>{{ (item.date) }}</td>
-                <td :class="{'blur':privacy}" class="text-end">{{ formatCurrency(item.value, portfolio.base_currency, true) }}</td>
+                <td :class="{'blur':privacy}" class="text-end">{{ formatCurrency(item.value, portfolioData.base_currency, true) }}</td>
                 <td v-if="index ===0" class="text-end">--</td>
                 <td v-else :class="{'negative':item.value < portfolioData.history[index-1].value}" class="text-end">
                   {{ formatPercentage((item.value - portfolioData.history[index - 1].value) / portfolioData.history[index - 1].value) }}
@@ -71,11 +72,13 @@ import {DateTime} from "luxon";
 import PortfolioHeader from "../components/PortfolioHeader";
 import PortfolioGrowth from "../components/PortfolioGrowth";
 import PortfolioHistoryGrouping from "../components/PortfolioHistoryGrouping";
+import LoadingIndicator from "../components/LoadingIndicator";
 
 export default {
 
   name: 'PortfolioHistory',
   components: {
+    LoadingIndicator,
     PortfolioHistoryGrouping,
     PortfolioGrowth,
     PortfolioHeader,

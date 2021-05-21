@@ -1,27 +1,5 @@
 <template>
-  <div class="d-flex justify-content-center" v-if="loading">
-    <div class="spinner-grow text-primary" role="status">
-      <span class="visually-hidden">Loading...</span>
-    </div>
-    <div class="spinner-grow text-secondary" role="status">
-      <span class="visually-hidden">Loading...</span>
-    </div>
-    <div class="spinner-grow text-success" role="status">
-      <span class="visually-hidden">Loading...</span>
-    </div>
-    <div class="spinner-grow text-danger" role="status">
-      <span class="visually-hidden">Loading...</span>
-    </div>
-    <div class="spinner-grow text-warning" role="status">
-      <span class="visually-hidden">Loading...</span>
-    </div>
-    <div class="spinner-grow text-info" role="status">
-      <span class="visually-hidden">Loading...</span>
-    </div>
-    <div class="spinner-grow text-dark" role="status">
-      <span class="visually-hidden">Loading...</span>
-    </div>
-  </div>
+  <loading-indicator v-if="loading"></loading-indicator>
   <div class="container" v-else>
 
     <div class="row">
@@ -127,11 +105,13 @@ import {interpolateColors} from "../utils/colors";
 import PortfolioHeader from "../components/PortfolioHeader";
 import PortfolioGrowth from "../components/PortfolioGrowth";
 import PortfolioHistoryGrouping from "../components/PortfolioHistoryGrouping";
+import LoadingIndicator from "../components/LoadingIndicator";
 
 export default {
 
   name: 'Home',
   components: {
+    LoadingIndicator,
     PortfolioHistoryGrouping,
     PortfolioGrowth,
     PortfolioHeader,

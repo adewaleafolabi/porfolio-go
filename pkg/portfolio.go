@@ -41,7 +41,7 @@ type PortfolioItem struct {
 	Icon          string                `json:"icon"`
 	Quantity      float64               `json:"quantity"`
 	TotalValue    float64               `json:"total_value"`
-	UnitPrice    float64               `json:"unit_price" gorm:"-"`
+	UnitPrice     float64               `json:"unit_price" gorm:"-"`
 	Label         string                `json:"label"`
 	PriceProvider pricing.PriceProvider `json:"price_provider"`
 }
