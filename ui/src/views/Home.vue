@@ -169,6 +169,7 @@ export default {
     try {
       this.portfolios = await this.getPortfolios()
       this.portfolio = await this.getPortfolio(this.portfolios[0].id)
+      this.portfolio.items = this.portfolio.items.filter((i)=>i.quantity > 0)
       this.colors = this.generateChartColors((this.portfolio.items || []).length)
       this.privacy = localStorage.getItem("privateMode") === 'true'
 

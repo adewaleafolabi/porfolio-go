@@ -3,6 +3,7 @@ package main
 import (
 	"embed"
 	"flag"
+	"github.com/pkg/browser"
 	"io/fs"
 	"net/http"
 	"portfolio/cron"
@@ -79,7 +80,9 @@ func main() {
 	s1.StartAsync()
 
 	app := setupWebServerApp(db, pm, sugar)
-
+	go func() {
+		browser.OpenURL(conf.ADDR)
+	}()
 	sugar.Fatal(app.Listen(conf.ADDR))
 }
 
