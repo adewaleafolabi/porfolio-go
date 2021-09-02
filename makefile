@@ -16,4 +16,4 @@ build:
 	@make build-backend
 
 deploy:
-	@make build && mv portfolio ~/Portfoilio
+	@make build && mv portfolio ~/portfolio/portfolio

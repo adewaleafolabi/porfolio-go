@@ -1,7 +1,9 @@
 <template>
   <div class="d-flex justify-content-between">
   <h2 class="title has-text-centered" v-if="portfolio">{{ portfolio ? portfolio.name : '' }} Portfolio
-    <span :class="{'blur':privateMode}">{{ formatCurrency(portfolio.total_value) }} <h5>{{ formatCurrency(portfolio.total_value_usd, 'USD') }}</h5></span></h2>
+    <span :class="{'blur':privateMode}">{{ formatCurrency(portfolio.total_value) }} <h5>{{ formatCurrency(portfolio.total_value_usd, 'USD') }}</h5>
+      <h5>ATH: {{ formatCurrency(portfolio.all_time_high) }}</h5>
+    </span></h2>
   <div class="row">
     <button class="btn btn-sm fs-3" @click="handleVisibility">{{privateMode?'🐵':'🙈'}}</button>
   </div>

@@ -29,6 +29,7 @@ type Portfolio struct {
 	TotalValue    float64            `json:"total_value"`
 	Goal          float64            `json:"goal"`
 	TotalValueUSD float64            `json:"total_value_usd" gorm:"-"`
+	AllTimeHigh   float64            `json:"all_time_high"`
 	Items         []PortfolioItem    `json:"items"`
 	History       []PortfolioHistory `json:"history"`
 }

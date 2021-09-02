@@ -40,6 +40,13 @@ func LogValue(db *gorm.DB, pm *pricing.PriceManager, logger *zap.SugaredLogger) 
 		if err := db.Create(&hist).Error; err != nil {
 			logger.Errorw("error storing portfolio history", "err", err)
 		}
+		if portfolios[i].TotalValue > portfolios[i].AllTimeHigh {
+			portfolios[i].AllTimeHigh = portfolios[i].TotalValue
+			if err := db.Model(&portfolios[i]).Updates(pkg.Portfolio{AllTimeHigh: portfolios[i].AllTimeHigh}).Error; err != nil {
+				logger.Errorw("error storing all time high to portfolio", "err", err)
+			}
+
+		}
 		fmt.Printf("Run Date: %s\n", time.Now().String())
 		fmt.Println(portfolios[i].String())
 	}
