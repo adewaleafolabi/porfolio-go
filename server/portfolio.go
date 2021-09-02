@@ -52,7 +52,7 @@ func (h *Server) GetPortfolio(c *fiber.Ctx) error {
 	p.UpdateTotalValue(prices)
 	if p.TotalValue > p.AllTimeHigh {
 		p.AllTimeHigh = p.TotalValue
-		if err := h.DB.Model(&p).Updates(pkg.Portfolio{AllTimeHigh: p.AllTimeHigh}).Error; err != nil {
+		if err := h.DB.Model(&pkg.Portfolio{}).Where("id = ?", p.ID).Update("all_time_high", p.AllTimeHigh).Error; err != nil {
 			h.Logger.Errorw("error storing all time high to portfolio", "err", err)
 		}
 	}
