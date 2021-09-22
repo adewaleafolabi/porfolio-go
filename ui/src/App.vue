@@ -1,5 +1,6 @@
 <template>
-  <div id="app">
+  <div id="app"   >
+    <KeyPress key-event="keyup" :key-code="27" @success="handleVisibility" />
     <nav :class="`navbar navbar-expand-lg navbar-${theme} bg-${theme}`">
       <div class="container-fluid">
         <router-link class="navbar-brand" to="/">
@@ -25,21 +26,33 @@
 </template>
 <script>
 import ThemeSwitcher from "./components/ThemeSwitcher";
+import KeyPress from "vue-keypress";
+import {state,mutations} from "./store/store"
 
 export default {
-  components: {ThemeSwitcher},
+  components: {ThemeSwitcher, KeyPress},
+  computed: {
+    privateMode () {
+      return state.privacy
+    }
+  },
   data() {
     return {
-      theme: ''
+      theme: '',
     }
   },
   methods: {
     handleThemeChange(theme) {
       this.theme = theme;
+    },
+    handleVisibility(){
+      mutations.setPrivacy(!this.privateMode, this)
+      this.$emit("privateMode", this.privateMode)
     }
   },
   mounted: function () {
     this.theme = localStorage.getItem("theme")
+    mutations.setPrivacy(localStorage.getItem("privateMode") === 'true', this)
   }
 }
 </script>

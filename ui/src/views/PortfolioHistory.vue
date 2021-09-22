@@ -17,7 +17,7 @@
             <portfolio-growth :history="portfolioData.history"
                               :privacy-mode="privacy"
                               v-if="portfolioData" :width="900"
-                              :key="growthComponentKey"></portfolio-growth>
+                              :key="privacy"></portfolio-growth>
           </div>
         </div>
       </div>
@@ -73,6 +73,7 @@ import PortfolioHeader from "../components/PortfolioHeader";
 import PortfolioGrowth from "../components/PortfolioGrowth";
 import PortfolioHistoryGrouping from "../components/PortfolioHistoryGrouping";
 import LoadingIndicator from "../components/LoadingIndicator";
+import {state} from "../store/store";
 
 export default {
 
@@ -132,7 +133,6 @@ export default {
     return {
       growthComponentKey: 0,
       loading: false,
-      privacy: false,
       portfolioData: null,
       chartOptions: {
         legend: {
@@ -157,7 +157,6 @@ export default {
     }
   },
   mounted: async function () {
-    this.privacy = localStorage.getItem("privacyMode") === 'true'
     this.portfolioData = this.portfolio
     if (!this.portfolioData) {
       this.portfolioData = await this.getPortfolio(this.id)
@@ -176,6 +175,9 @@ export default {
     })
   },
   computed: {
+    privacy: function (){
+      return state.privacy
+    },
     chartData: function () {
       return {
         labels: this.portfolioData.history.map(i => i.date),

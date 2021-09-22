@@ -106,6 +106,7 @@ import PortfolioHeader from "../components/PortfolioHeader";
 import PortfolioGrowth from "../components/PortfolioGrowth";
 import PortfolioHistoryGrouping from "../components/PortfolioHistoryGrouping";
 import LoadingIndicator from "../components/LoadingIndicator";
+import {state,mutations} from "../store/store";
 
 export default {
 
@@ -119,7 +120,6 @@ export default {
   },
   data() {
     return {
-      privacy: false,
       portfolios: [],
       portfolio: null,
       chartData: null,
@@ -149,7 +149,7 @@ export default {
       this.growthComponentKey++
     },
     handlePrivateMode(visible) {
-      this.privacy = visible
+      mutations.setPrivacy(!visible)
       this.growthComponentKey++
     },
     generateChartColors: function (dataLength) {
@@ -161,6 +161,9 @@ export default {
     }
   },
   computed: {
+    privacy: function () {
+      return state.privacy
+    },
     loading: function () {
       return this.portfolio === null
     }
@@ -171,7 +174,7 @@ export default {
       this.portfolio = await this.getPortfolio(this.portfolios[0].id)
       this.portfolio.items = this.portfolio.items.filter((i)=>i.quantity > 0)
       this.colors = this.generateChartColors((this.portfolio.items || []).length)
-      this.privacy = localStorage.getItem("privateMode") === 'true'
+      // this.privacy = localStorage.getItem("privateMode") === 'true'
 
       let assetDistribution = this.portfolio.items.reduce(function (r, o) {
         (r[o.asset_type]) ? r[o.asset_type] += o.total_value : r[o.asset_type] = o.total_value;

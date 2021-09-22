@@ -18,6 +18,7 @@
     "vue": "^2.6.11",
     "vue-axios": "^3.2.4",
     "vue-chartjs": "^3.5.1",
+    "vue-keypress": "^2.1.1",
     "vue-router": "^3.2.0"
   },
   "devDependencies": {
