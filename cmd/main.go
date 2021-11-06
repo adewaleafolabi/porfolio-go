@@ -118,7 +118,7 @@ func setupWebServerApp(db *gorm.DB, pm *pricing.PriceManager, sugar *zap.Sugared
 	v1 := app.Group("/api").Group("/v1")
 	v1.Get("/portfolios/", s.GetPortfolios)
 	v1.Post("/portfolios::logValue", s.LogPortfoliosValue)
-	v1.Get("/portfolios/:portfolio_id", s.GetPortfolio)
+	v1.Get("/portfolios/:id", s.GetPortfolio)
 
 	return app
 }

@@ -16,6 +16,7 @@
             <router-link class="nav-link" aria-current="page" to="/">Home</router-link>
           </div>
         </div>
+        <portfolio-switcher/>
         <theme-switcher @theme="handleThemeChange"></theme-switcher>
       </div>
     </nav>
@@ -28,9 +29,10 @@
 import ThemeSwitcher from "./components/ThemeSwitcher";
 import KeyPress from "vue-keypress";
 import {state,mutations} from "./store/store"
+import PortfolioSwitcher from "./components/PortfolioSwitcher";
 
 export default {
-  components: {ThemeSwitcher, KeyPress},
+  components: {PortfolioSwitcher, ThemeSwitcher, KeyPress},
   computed: {
     privateMode () {
       return state.privacy
@@ -53,6 +55,7 @@ export default {
   mounted: function () {
     this.theme = localStorage.getItem("theme")
     mutations.setPrivacy(localStorage.getItem("privateMode") === 'true', this)
+    mutations.setPortfolioID(localStorage.getItem("portfolioID"))
   }
 }
 </script>

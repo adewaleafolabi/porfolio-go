@@ -11,11 +11,13 @@
       <div class="col">
         <div class="card tile">
           <div class="card-header" v-if="portfolio">
-            Road to <span :class="{'blur':privacy}">{{ formatCurrency(this.portfolio.goal, this.portfolio.base_currency, true) }}</span>
+            Road to <span :class="{'blur':privacy}">{{
+              formatCurrency(this.portfolio.goal, this.portfolio.base_currency, true)
+            }}</span>
           </div>
           <div class="card-body">
             <pie-chart :chart-data="roadToTarget" :options="chartOptions" :privacy-mode="privacy" v-if="roadToTarget"
-                       :key="privacy"></pie-chart>
+                       :key="hashCode(`${privacy}${currentPortfolioID}`)"></pie-chart>
           </div>
         </div>
       </div>
@@ -26,7 +28,7 @@
           </div>
           <div class="card-body">
             <pie-chart :chart-data="distribution" :options="chartOptions" :privacy-mode="privacy" v-if="distribution"
-                       :key="privacy"></pie-chart>
+                       :key="hashCode(`${privacy}${currentPortfolioID}`)"></pie-chart>
           </div>
         </div>
       </div>
@@ -40,7 +42,7 @@
           </div>
           <div class="card-body">
             <portfolio-growth :history="portfolio.history" :privacy-mode="privacy"
-                              :key="growthComponentKey"></portfolio-growth>
+                              :key="hashCode(`${privacy}${currentPortfolioID}`)"></portfolio-growth>
             <portfolio-history-grouping :history="portfolio.history" v-if="portfolio"
                                         @historyGrouped="handleGrouping"></portfolio-history-grouping>
           </div>
@@ -57,13 +59,17 @@
               <tr>
                 <th>Asset</th>
                 <th>Allocation</th>
-                <th  class="text-end">Amount</th>
-                <th  class="text-end">Total</th>
+                <th class="text-end">Amount</th>
+                <th class="text-end">Total</th>
               </tr>
               </thead>
               <tbody>
               <tr v-for="(item,index) in portfolio.items" :key="index">
-                <td>{{ item.label || item.symbol }} <span class="text-sm fw-bold" v-if="item.unit_price">({{formatCurrency(item.unit_price)}})</span> </td>
+                <td>{{ item.label || item.symbol }} <span class="text-sm fw-bold"
+                                                          v-if="item.unit_price">({{
+                    formatCurrency(item.unit_price)
+                  }})</span>
+                </td>
                 <td>
                   <div class="progress position-relative">
                     <div class="progress-bar progress-bar-striped" role="progressbar"
@@ -76,8 +82,8 @@
                   </div>
                 </td>
                 <td :class="{'blur':privacy,}" class="text-end">{{ formatNumber(item.quantity, 3) }}</td>
-                <td :class="{ 'blur':privacy, negative: item.total_value < 0 }"  class="text-end">{{
-                    formatCurrency(item.total_value,portfolio.base_currency, true)
+                <td :class="{ 'blur':privacy, negative: item.total_value < 0 }" class="text-end">{{
+                    formatCurrency(item.total_value, portfolio.base_currency, true)
                   }}
                 </td>
               </tr>
@@ -98,7 +104,7 @@
 
 <script>
 import {getPortfolio, getPortfolios} from "../service/portfolio_service";
-import {formatCurrency, formatDate, formatDecimal, formatNumber, formatPercentage} from "../utils/utils";
+import {formatCurrency, formatDate, formatDecimal, formatNumber, formatPercentage, hashCode} from "../utils/utils";
 import PieChart from "../components/PieChart";
 import {interpolateRdYlBu} from "d3-scale-chromatic";
 import {interpolateColors} from "../utils/colors";
@@ -106,7 +112,7 @@ import PortfolioHeader from "../components/PortfolioHeader";
 import PortfolioGrowth from "../components/PortfolioGrowth";
 import PortfolioHistoryGrouping from "../components/PortfolioHistoryGrouping";
 import LoadingIndicator from "../components/LoadingIndicator";
-import {state,mutations} from "../store/store";
+import {mutations, state} from "../store/store";
 
 export default {
 
@@ -120,14 +126,8 @@ export default {
   },
   data() {
     return {
-      portfolios: [],
-      portfolio: null,
-      chartData: null,
+      portfolios: {},
       growthComponentKey: 0,
-      colors: [],
-      distribution: null,
-      roadToTarget: null,
-      lineChartData: null,
       chartOptions: {
         legend: {
           display: true
@@ -138,6 +138,7 @@ export default {
     }
   },
   methods: {
+    hashCode,
     getPortfolio,
     getPortfolios,
     formatCurrency,
@@ -158,30 +159,73 @@ export default {
         colorEnd: 2,
         useEndAsStart: false,
       });
+    },
+    setupPortfolio: async function () {
+      try {
+        let portfolios = await this.getPortfolios()
+        if (portfolios) {
+          for (let index = 0; index < portfolios.length; ++index) {
+            portfolios[index].items = portfolios[index].items.filter((i) => i.quantity != 0);
+          }
+
+          mutations.setPortfolioKeyValue(portfolios.map(k => {
+            this.$set(this.portfolios, k.id, k)
+            return {id: k.id, name: k.name}
+          }))
+        }
+        if (this.currentPortfolioID) {
+          if (!this.portfolios[this.currentPortfolioID]) {
+            //if currentPortfolioID is not found on the server set the first item as the
+            //current id
+            mutations.setPortfolioID(portfolios[0].id)
+          }
+        } else {
+          mutations.setPortfolioID(portfolios[0].id)
+        }
+      } catch (e) {
+        console.log(e)
+      }
+    }
+  },
+  watch: {
+    // eslint-disable-next-line no-unused-vars
+    currentPortfolioID: function (old, newId) {
+      // this.setupPortfolio()
     }
   },
   computed: {
     privacy: function () {
       return state.privacy
     },
+    currentPortfolioID: function () {
+      return state.portfolioID
+    },
     loading: function () {
-      return this.portfolio === null
-    }
-  },
-  mounted: async function () {
-    try {
-      this.portfolios = await this.getPortfolios()
-      this.portfolio = await this.getPortfolio(this.portfolios[0].id)
-      this.portfolio.items = this.portfolio.items.filter((i)=>i.quantity > 0)
-      this.colors = this.generateChartColors((this.portfolio.items || []).length)
-      // this.privacy = localStorage.getItem("privateMode") === 'true'
-
+      return this.portfolio === undefined
+    },
+    portfolio: function () {
+      return this.portfolios[this.currentPortfolioID]
+    },
+    colors: function () {
+      if (!this.portfolio) {
+        return []
+      }
+      let length = (this.portfolio.items || []).length
+      if (length === 1) {
+        length += 1
+      }
+      return this.generateChartColors(length)
+    },
+    distribution: function () {
+      if (!this.portfolio) {
+        return {}
+      }
       let assetDistribution = this.portfolio.items.reduce(function (r, o) {
         (r[o.asset_type]) ? r[o.asset_type] += o.total_value : r[o.asset_type] = o.total_value;
         return r;
       }, {});
 
-      this.distribution = {
+      return {
         labels: Object.keys(assetDistribution),
         datasets: [
           {
@@ -192,7 +236,12 @@ export default {
           }
         ]
       }
-      this.roadToTarget = {
+    },
+    roadToTarget: function () {
+      if (!this.portfolio) {
+        return {}
+      }
+      return {
         labels: ["Complete", "Remaining"],
         datasets: [{
           backgroundColor: this.colors,
@@ -200,18 +249,12 @@ export default {
           data: [this.portfolio.total_value, this.portfolio.goal - this.portfolio.total_value]
         }]
       }
-      this.chartData = {
-        labels: this.portfolio.items.map(i => i.label || i.symbol),
-        datasets: [
-          {
-            label: this.portfolio.name,
-            backgroundColor: this.colors,
-            hoverBackgroundColor: this.colors,
-            data: this.portfolio.items.map(i => i.total_value)
-          }
-        ]
+    },
+    lineChartData: function () {
+      if (!this.portfolio) {
+        return {}
       }
-      this.lineChartData = {
+      return {
         labels: this.portfolio.history.map(i => formatDate(i.date)),
         datasets: [
           {
@@ -222,9 +265,26 @@ export default {
           }
         ]
       }
-    } catch (e) {
-      console.log(e)
+    },
+    chartData: function () {
+      if (!this.portfolio) {
+        return {}
+      }
+      return {
+        labels: this.portfolio.items.map(i => i.label || i.symbol),
+        datasets: [
+          {
+            label: this.portfolio.name,
+            backgroundColor: this.colors,
+            hoverBackgroundColor: this.colors,
+            data: this.portfolio.items.map(i => i.total_value)
+          }
+        ]
+      }
     }
+  },
+  mounted: async function () {
+    await this.setupPortfolio()
   },
 }
 </script>
@@ -247,10 +307,11 @@ export default {
   filter: blur(0.5rem)
 }
 
-em{
+em {
   font-weight: 700;
 }
-.text-sm{
+
+.text-sm {
   font-size: x-small;
 }
 </style>
